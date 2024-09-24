@@ -1,5 +1,8 @@
 import time
 import pigpio
+import sys
+import termios
+import tty
 
 # Initialize pigpio library
 pi = pigpio.pi()
@@ -14,24 +17,41 @@ servo_pin = 18
 # Set the frequency and initial pulse width
 pi.set_mode(servo_pin, pigpio.OUTPUT)
 
-# Function to set servo angle
-def set_servo_angle(angle):
-    # Convert angle to pulse width
-    pulse_width = 500 + (angle * 2000 / 180)
+# Function to set servo speed
+def set_servo_speed(speed):
+    # Convert speed to pulse width
+    pulse_width = 1500 + speed
     pi.set_servo_pulsewidth(servo_pin, pulse_width)
+
+# Function to read a single character from standard input
+def getch():
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+
+speed = 0
 
 try:
     while True:
-        # Example: Sweep the servo from 0 to 180 degrees
-        for angle in range(0, 181, 1):
-            set_servo_angle(angle)
-            time.sleep(0.02)  # Small delay to allow servo to move
-
-        for angle in range(180, -1, -1):
-            set_servo_angle(angle)
-            time.sleep(0.02)
+        char = getch()
+        if char == 'a':
+            speed += 10
+        elif char == 's':
+            speed -= 10
+        elif char == 'q':
+            break
+        set_servo_speed(speed)
+        time.sleep(0.02)
 
 except KeyboardInterrupt:
+    pass
+
+finally:
     # Turn off the servo
     pi.set_servo_pulsewidth(servo_pin, 0)
     pi.stop()
