@@ -1,37 +1,34 @@
-import RPi.GPIO as GPIO
+import pigpio
 import time
 
-# Set up GPIO pins
-PWM_PIN = 18  # GPIO pin for PWM
-DIR_PIN = 23  # GPIO pin for direction control
+# Define GPIO pin connected to the PWM input of BDC80P
+PWM_PIN = 18  # Adjust as needed
 
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(PWM_PIN, GPIO.OUT)
-GPIO.setup(DIR_PIN, GPIO.OUT)
+# Initialize pigpio
+pi = pigpio.pi()
 
-# Set up PWM on the PWM_PIN at 1kHz frequency
-pwm = GPIO.PWM(PWM_PIN, 1000)
-pwm.start(0)  # Start PWM with 0% duty cycle (motor off)
+if not pi.connected:
+    exit()
 
-def set_speed(speed):
-    if speed >= 0:
-        GPIO.output(DIR_PIN, GPIO.HIGH)  # Forward
-    else:
-        GPIO.output(DIR_PIN, GPIO.LOW)  # Reverse
-        speed = -speed  # Make speed positive
+# Set the GPIO pin as PWM output
+pi.set_mode(PWM_PIN, pigpio.OUTPUT)
 
-    pwm.ChangeDutyCycle(speed)  # Change motor speed
+# Set PWM frequency
+frequency = 1000  # You may need to adjust this depending on the controller's requirements
 
+# Set speed using PWM duty cycle (0-255 for pigpio)
 try:
     while True:
-        for speed in range(0, 101, 10):  # Gradually increase speed
-            set_speed(speed)
-            time.sleep(1)
-        for speed in range(100, -1, -10):  # Gradually decrease speed
-            set_speed(speed)
-            time.sleep(1)
+        for speed in range(0, 256, 10):  # Ramp up the speed
+            pi.set_PWM_dutycycle(PWM_PIN, speed)
+            time.sleep(0.1)
+
+        for speed in range(255, -1, -10):  # Ramp down the speed
+            pi.set_PWM_dutycycle(PWM_PIN, speed)
+            time.sleep(0.1)
 except KeyboardInterrupt:
     pass
 
-pwm.stop()
-GPIO.cleanup()
+# Turn off PWM and clean up
+pi.set_PWM_dutycycle(PWM_PIN, 0)
+pi.stop()
