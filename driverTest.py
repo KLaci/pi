@@ -33,11 +33,13 @@ try:
         # Ramp up the throttle from minimum to maximum
         for pulsewidth in range(1000, 2001, 50):
             pi.set_servo_pulsewidth(ESC_PIN, pulsewidth)
-            time.sleep(1)
+            time.sleep(0.1)
+        
+        time.sleep(5)
         # Ramp down the throttle from maximum to minimum
         for pulsewidth in range(2000, 999, -50):
             pi.set_servo_pulsewidth(ESC_PIN, pulsewidth)
-            time.sleep(1)
+            time.sleep(0.1)
 except KeyboardInterrupt:
     pass
 finally:
