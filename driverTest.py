@@ -1,8 +1,8 @@
 import pigpio
 import time
 
-# Define GPIO pin connected to the PWM input of BDC80P
-PWM_PIN = 18  # Adjust as needed
+# Define GPIO pin connected to the signal input of the ESC
+ESC_PIN = 18  # Adjust as needed
 
 # Initialize pigpio
 pi = pigpio.pi()
@@ -10,25 +10,37 @@ pi = pigpio.pi()
 if not pi.connected:
     exit()
 
-# Set the GPIO pin as PWM output
-pi.set_mode(PWM_PIN, pigpio.OUTPUT)
+# Make sure the GPIO pin is set to output
+pi.set_mode(ESC_PIN, pigpio.OUTPUT)
 
-# Set PWM frequency
-frequency = 1000  # You may need to adjust this depending on the controller's requirements
+# Function to arm the ESC
+def arm_esc():
+    print("Arming ESC...")
+    pi.set_servo_pulsewidth(ESC_PIN, 1000)  # Minimum throttle
+    time.sleep(1)
+    pi.set_servo_pulsewidth(ESC_PIN, 2000)  # Maximum throttle
+    time.sleep(1)
+    pi.set_servo_pulsewidth(ESC_PIN, 1000)  # Back to minimum
+    time.sleep(1)
+    print("ESC Armed and ready.")
 
-# Set speed using PWM duty cycle (0-255 for pigpio)
+# Arm the ESC before sending throttle signals
+arm_esc()
+
+# Control the ESC by varying the pulse width
 try:
     while True:
-        for speed in range(0, 256, 10):  # Ramp up the speed
-            pi.set_PWM_dutycycle(PWM_PIN, speed)
+        # Ramp up the throttle from minimum to maximum
+        for pulsewidth in range(1000, 2001, 50):
+            pi.set_servo_pulsewidth(ESC_PIN, pulsewidth)
             time.sleep(0.1)
-
-        for speed in range(255, -1, -10):  # Ramp down the speed
-            pi.set_PWM_dutycycle(PWM_PIN, speed)
+        # Ramp down the throttle from maximum to minimum
+        for pulsewidth in range(2000, 999, -50):
+            pi.set_servo_pulsewidth(ESC_PIN, pulsewidth)
             time.sleep(0.1)
 except KeyboardInterrupt:
     pass
-
-# Turn off PWM and clean up
-pi.set_PWM_dutycycle(PWM_PIN, 0)
-pi.stop()
+finally:
+    # Stop the ESC
+    pi.set_servo_pulsewidth(ESC_PIN, 0)
+    pi.stop()
