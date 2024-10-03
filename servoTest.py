@@ -1,7 +1,8 @@
 import time
 import pigpio
 import sys
-from flask import Flask, request, jsonify
+import termios
+import tty
 
 # Initialize pigpio library
 pi = pigpio.pi()
@@ -15,13 +16,6 @@ servo_pin = 18
 
 # Set the frequency and initial pulse width
 pi.set_mode(servo_pin, pigpio.OUTPUT)
-
-# Initialize Flask app
-app = Flask(__name__)
-
-# Global variable to store current speed
-speed = 0
-speed_increment = 10  # Set speed step increment
 
 # Function to set servo speed
 def set_servo_speed(speed):
@@ -38,26 +32,42 @@ def set_servo_speed(speed):
     pulse_width = 1500 + speed
     pi.set_servo_pulsewidth(servo_pin, pulse_width)
 
-@app.route('/adjust_speed', methods=['POST'])
-def adjust_speed():
-    global speed
-    data = request.json
-    increase = data.get('increase', False)
-
-    if increase:
-        speed += speed_increment
-    else:
-        speed -= speed_increment
-
-    set_servo_speed(speed)
-    return jsonify({"current_speed": speed}), 200
-
-if __name__ == '__main__':
+# Function to read a single character from standard input
+def getch():
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
     try:
-        app.run(host='0.0.0.0', port=5000)
-    except KeyboardInterrupt:
-        pass
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
     finally:
-        # Turn off the servo
-        pi.set_servo_pulsewidth(servo_pin, 0)
-        pi.stop()
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+
+speed = 0
+speed_increment = 10  # Set speed step increment
+
+try:
+    while True:
+        char = getch()
+        if char == 'a':
+            # Gradually increase speed
+            speed += speed_increment
+        elif char == 's':
+            # Gradually decrease speed
+            speed -= speed_increment
+        elif char == 'q':
+            break
+
+        # Set the speed to the servo motor
+        set_servo_speed(speed)
+        
+        # Short delay to allow the motor to respond smoothly
+        time.sleep(0.05)
+
+except KeyboardInterrupt:
+    pass
+
+finally:
+    # Turn off the servo
+    pi.set_servo_pulsewidth(servo_pin, 0)
+    pi.stop()

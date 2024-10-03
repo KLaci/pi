@@ -1,7 +1,7 @@
 import time
 import pigpio
 import sys
-from flask import Flask, request, jsonify
+from bluepy import btle
 
 # Initialize pigpio library
 pi = pigpio.pi()
@@ -15,9 +15,6 @@ servo_pin = 18
 
 # Set the frequency and initial pulse width
 pi.set_mode(servo_pin, pigpio.OUTPUT)
-
-# Initialize Flask app
-app = Flask(__name__)
 
 # Global variable to store current speed
 speed = 0
@@ -38,27 +35,37 @@ def set_servo_speed(speed):
     pulse_width = 1500 + speed
     pi.set_servo_pulsewidth(servo_pin, pulse_width)
 
-@app.route('/', methods=['GET'])
-def hello_world():
-    return "Hello, World!"
+class SpeedControlService(btle.Peripheral):
+    def __init__(self):
+        btle.Peripheral.__init__(self)
+        self.addService(btle.UUID("1234"))
+        self.speed_char = self.addCharacteristic(
+            btle.UUID("5678"),
+            btle.Characteristic.PROP_READ | btle.Characteristic.PROP_NOTIFY
+        )
+        self.speed_char.addDescriptor(btle.UUID("2901"), "Speed")
 
-@app.route('/adjust_speed', methods=['POST'])
-def adjust_speed():
-    global speed
-    data = request.json
-    increase = data.get('increase', False)
-
-    if increase:
+    def increase_speed(self):
+        global speed
         speed += speed_increment
-    else:
-        speed -= speed_increment
+        set_servo_speed(speed)
+        self.speed_char.write(str(speed).encode())
 
-    set_servo_speed(speed)
-    return jsonify({"current_speed": speed}), 200
+    def decrease_speed(self):
+        global speed
+        speed -= speed_increment
+        set_servo_speed(speed)
+        self.speed_char.write(str(speed).encode())
 
 if __name__ == '__main__':
     try:
-        app.run(host='0.0.0.0', port=5000)
+        speed_control = SpeedControlService()
+        speed_control.advertise("Speed Control")
+        print("BLE peripheral started. Waiting for connections...")
+        while True:
+            if speed_control.waitForConnection(timeout=1.0):
+                print("Connected. Use the client to control the speed.")
+                speed_control.waitForDisconnection()
     except KeyboardInterrupt:
         pass
     finally:
