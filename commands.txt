@@ -6,3 +6,12 @@ ssh admin@raspberrypi.local
 - Red +5V
 - Orange GPIO18
 
+# server start
+sudo pigpiod
+python server.py & lt --port 5000 --subdomain smartsmash
+
+# domain
+https://smartsmash.loca.lt
+
+curl -X POST -H "Content-Type: application/json" -d '{"increase": true}' https://smartsmash.loca.lt/adjust_speed
+curl -X POST -H "Content-Type: application/json" -d '{"increase": false}' https://smartsmash.loca.lt/adjust_speed
