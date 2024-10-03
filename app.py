@@ -38,6 +38,10 @@ def set_servo_speed(speed):
     pulse_width = 1500 + speed
     pi.set_servo_pulsewidth(servo_pin, pulse_width)
 
+@app.route('/', methods=['GET'])
+def hello_world():
+    return "Hello, World!"
+
 @app.route('/adjust_speed', methods=['POST'])
 def adjust_speed():
     global speed

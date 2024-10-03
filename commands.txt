@@ -8,7 +8,7 @@ ssh admin@raspberrypi.local
 
 # server start
 sudo pigpiod
-python server.py & lt --port 5000 --subdomain smartsmash
+flask run --host=0.0.0.0 & lt --port 5000 --subdomain smartsmash
 
 # domain
 https://smartsmash.loca.lt
