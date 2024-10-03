@@ -1,2 +1,8 @@
 # connect on ssh
 ssh admin@raspberrypi.local
+
+# servo connection
+- Brown GND
+- Red +5V
+- Orange GPIO18
+
