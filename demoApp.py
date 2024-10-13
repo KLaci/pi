@@ -1,23 +1,61 @@
-import btferret as btfpy
+from bluezero import peripheral
+from gpiozero import LED
 
-def callback(node,operation,ctic_index):
-  if operation == btfpy.LE_CONNECT:
-    print("Connected")
-  elif operation == btfpy.LE_DISCONNECT:
-    print("Disconnected")
-    return(btfpy.SERVER_EXIT)
-  return(btfpy.SERVER_CONTINUE)
+# GPIO Setup
+control_pin = LED(18)  # Replace with your GPIO pin number
 
-if btfpy.Init_blue("devices.txt") == 0:
-  exit(0)
+# Define read and write functions
+def read_state():
+    # Return the current state as bytes
+    state = 'start' if control_pin.is_active else 'stop'
+    return bytes(state, 'utf-8')
 
-print("Use 1st entry in devices.txt (My Pi) for")
-print("this device to define LE characteristics")
-  # Set My data (index 1) value
-btfpy.Write_ctic(btfpy.Localnode(),1,"Hello world",0)
+def write_state(value):
+    action = value.decode('utf-8')
+    if action == 'start':
+        control_pin.on()
+        print('Machine Started')
+    elif action == 'stop':
+        control_pin.off()
+        print('Machine Stopped')
+    else:
+        print('Invalid Action Received:', action)
 
-    # CONNECTION/PAIRING PROBLEMS?
-    # See section 3-7-1 Random address alternative setup
+# Create the characteristic
+control_characteristic = peripheral.Characteristic(
+    uuid='12345678-1234-5678-1234-56789abcdef1',
+    flags=['read', 'write'],
+    read=read_state,
+    write=write_state
+)
 
-btfpy.Le_server(callback,0)
-btfpy.Close_all()
+# Create the service
+control_service = peripheral.Service(
+    uuid='12345678-1234-5678-1234-56789abcdef0',
+    primary=True,
+    characteristics=[control_characteristic]
+)
+
+# Get the adapter address
+import subprocess
+
+def get_adapter_address():
+    result = subprocess.run(['hciconfig'], stdout=subprocess.PIPE)
+    output = result.stdout.decode()
+    import re
+    match = re.search(r'BD Address: ([0-9A-F:]{17})', output)
+    if match:
+        return match.group(1)
+    else:
+        raise Exception('Bluetooth adapter address not found.')
+
+adapter_address = get_adapter_address()
+
+# Create and start the peripheral
+device = peripheral.Peripheral(
+    adapter_addr=adapter_address,
+    local_name='TennisBallMachine',
+    services=[control_service]
+)
+
+device.run()
