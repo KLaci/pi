@@ -25,10 +25,6 @@ def set_servo_speed(speed):
 class SpeedControlService(btle.Peripheral):
     def __init__(self):
         btle.Peripheral.__init__(self)
-        self.speed_char = self.addCharacteristic(
-            btle.UUID("5678"),
-            btle.Characteristic.PROP_READ | btle.Characteristic.PROP_NOTIFY
-        )
         self.speed_char.addDescriptor(btle.UUID("2901"), "Speed")
 
     def increase_speed(self):
