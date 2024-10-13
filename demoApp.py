@@ -1,4 +1,4 @@
-from bluepy.btle import Peripheral, UUID, Service, Characteristic, Descriptor
+from bluepy.btle import Peripheral, UUID, Service, Characteristic, Descriptor, DefaultDelegate
 from time import sleep
 
 class ControlService(Service):
@@ -25,17 +25,28 @@ class ControlCharacteristic(Characteristic):
         else:
             print("Invalid Action")
 
+class MyPeripheral(Peripheral, DefaultDelegate):
+    def __init__(self):
+        DefaultDelegate.__init__(self)
+        Peripheral.__init__(self)
+        self.control_service = ControlService(self)
+        self.withDelegate(self)
+
 def main():
-    # Initialize Peripheral
-    periph = Peripheral()
-    periph.addService(ControlService(periph))
-    periph.publish()
+    # Initialize custom Peripheral
+    periph = MyPeripheral()
+    
+    periph.setAdvertisementData(localName="MyDevice")
+    periph.advertise()
     print("BLE Peripheral Running...")
     try:
         while True:
-            sleep(1)
+            periph.waitForConnection()
+            while periph.connected:
+                periph.waitForNotifications(1.0)
+            print("Device disconnected. Advertising again...")
     except KeyboardInterrupt:
-        periph.stop()
+        periph.stopAdvertisement()
         print("BLE Peripheral Stopped")
 
 if __name__ == "__main__":
