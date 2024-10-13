@@ -1,4 +1,4 @@
-import btfpy
+import btferret as btfpy
 
 def callback(node,operation,ctic_index):
   if operation == btfpy.LE_CONNECT:
