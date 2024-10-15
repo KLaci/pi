@@ -313,3 +313,11 @@ class CharacteristicUserDescriptionDescriptor(Descriptor):
         if not self.writable:
             raise NotPermittedException()
         self.value = value
+
+    @dbus.service.method(GATT_DESC_IFACE)
+    def StartNotify(self):
+        print('Device connected')
+
+    @dbus.service.method(GATT_DESC_IFACE)
+    def StopNotify(self):
+        print('Device disconnected')
