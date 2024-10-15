@@ -15,3 +15,8 @@ https://smartsmash.loca.lt
 
 curl -X POST -H "Content-Type: application/json" -d '{"increase": true}' https://smartsmash.loca.lt/adjust_speed
 curl -X POST -H "Content-Type: application/json" -d '{"increase": false}' https://smartsmash.loca.lt/adjust_speed
+
+diskutil unmountDisk /dev/disk15
+diskutil unmountDisk /dev/disk16
+
+sudo dd if=/dev/rdisk15 of=/dev/rdisk16 bs=1m
