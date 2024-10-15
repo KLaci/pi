@@ -55,18 +55,22 @@ class SpeedCharacteristic(Characteristic):
             print("Invalid speed value received")
 
     def set_servo_speed(self, speed):
-        # Limit the speed to avoid stalling at low values
-        min_speed_limit = -400  # Prevent motor from stalling
-        max_speed_limit = 400   # Max speed limit (avoid overdrive)
-        
-        if speed < min_speed_limit:
-            speed = min_speed_limit
-        elif speed > max_speed_limit:
-            speed = max_speed_limit
+        if speed == 0:
+            # Turn off the servo
+            pi.set_servo_pulsewidth(servo_pin, 0)
+        else:
+            # Limit the speed to avoid stalling at low values
+            min_speed_limit = -400  # Prevent motor from stalling
+            max_speed_limit = 400   # Max speed limit (avoid overdrive)
+            
+            if speed < min_speed_limit:
+                speed = min_speed_limit
+            elif speed > max_speed_limit:
+                speed = max_speed_limit
 
-        # Convert speed to pulse width, where 1500 is stopped
-        pulse_width = 1500 + speed
-        pi.set_servo_pulsewidth(servo_pin, pulse_width)
+            # Convert speed to pulse width, where 1500 is stopped
+            pulse_width = 1500 + speed
+            pi.set_servo_pulsewidth(servo_pin, pulse_width)
 
 app = Application()
 app.add_service(TennisBallMachineService(0))
