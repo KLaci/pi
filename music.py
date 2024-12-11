@@ -20,15 +20,21 @@ def get_bluetooth_devices():
     # Turn on bluetooth adapter if it's not already on
     run_cmd("bluetoothctl -- power on")
     
-    # Start scanning with more time and verbose output
+    # Start scanning in background mode
     print("Starting scan...")
-    run_cmd("bluetoothctl -- scan on", check=False)
+    scan_process = subprocess.Popen(["bluetoothctl", "scan", "on"], 
+                                  stdout=subprocess.PIPE, 
+                                  stderr=subprocess.PIPE)
     
-    # Wait longer for devices to be discovered
+    # Wait while scanning
     print("Scanning for devices... (10 seconds)")
     time.sleep(10)
     
-    # Stop scanning
+    # Kill the scan process
+    scan_process.terminate()
+    scan_process.wait()
+    
+    # Stop scanning explicitly
     run_cmd("bluetoothctl -- scan off")
     
     # List devices with verbose output
