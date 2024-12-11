@@ -1,11 +1,25 @@
 import bluetooth
-import pygame
 import time
 import difflib
 import sys
+import os
+import subprocess
+import dbus
 
 device_name = "LAMAX Beat SE-1"  # The friendly name of your Bluetooth device
 mp3_path = "/home/admin/W/pi/demo.mp3"  # Path to the MP3 file you want to play
+
+def setup_bluetooth_audio():
+    try:
+        # Make sure Bluetooth audio services are running
+        os.system('pulseaudio -k')
+        time.sleep(1)
+        os.system('pulseaudio --start')
+        time.sleep(2)
+        os.system('bluetoothctl -- power on')
+        print("Bluetooth audio services initialized")
+    except Exception as e:
+        print(f"Error setting up Bluetooth audio: {e}")
 
 def find_bluetooth_devices():
     print("Scanning for Bluetooth devices...")
@@ -34,60 +48,67 @@ def find_bluetooth_devices():
     
     return None
 
-def find_rfcomm_channel(addr):
-    print("Searching for available RFCOMM channels...")
-    services = bluetooth.find_service(address=addr)
-    if not services:
-        print("No services found. Using default channel.")
-        return None
-    
-    for svc in services:
-        if "RFCOMM" in str(svc):
-            return svc["port"]
-    return None
-
-def connect_bluetooth(address):
-    # First, try to find the correct RFCOMM channel
-    channel = find_rfcomm_channel(address)
-    if channel is None:
-        # Try common channels if service discovery fails
-        channels_to_try = [1, 2, 3, 4]
-    else:
-        channels_to_try = [channel]
-
-    for channel in channels_to_try:
-        try:
-            print(f"Trying to connect on channel {channel}...")
-            sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-            sock.connect((address, channel))
-            print(f"Successfully connected to the device on channel {channel}!")
-            return sock
-        except bluetooth.BluetoothError as e:
-            print(f"Failed to connect on channel {channel}: {e}")
-            continue
-    
-    print("Could not connect on any channel")
-    return None
+def connect_bluetooth_audio(address):
+    try:
+        print("Attempting to connect Bluetooth audio...")
+        
+        # Connect using bluetoothctl
+        commands = [
+            f'connect {address}',
+            'trust {address}',
+            f'pair {address}',
+            'info {address}'
+        ]
+        
+        for cmd in commands:
+            result = subprocess.run(['bluetoothctl', cmd.format(address=address)], 
+                                 capture_output=True, text=True)
+            print(f"Executing: {cmd}")
+            print(result.stdout)
+            time.sleep(2)
+        
+        # Wait for audio profile to be set up
+        time.sleep(3)
+        
+        # Check if device is connected
+        result = subprocess.run(['bluetoothctl', 'info', address], 
+                              capture_output=True, text=True)
+        
+        if "Connected: yes" in result.stdout:
+            print("Successfully connected to Bluetooth audio device!")
+            return True
+        else:
+            print("Failed to connect to Bluetooth audio device")
+            return False
+            
+    except Exception as e:
+        print(f"Error connecting Bluetooth audio: {e}")
+        return False
 
 def play_audio():
     try:
-        # Initialize pygame mixer
-        pygame.mixer.init()
-        pygame.mixer.music.load(mp3_path)
-        
         print(f"Playing: {mp3_path}")
-        pygame.mixer.music.play()
+        # Use VLC to stream audio through Bluetooth
+        cmd = ['cvlc', '--play-and-exit', mp3_path]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
-        # Wait for the music to play
-        while pygame.mixer.music.get_busy():
-            time.sleep(1)
-            
+        # Wait for playback to complete
+        process.wait()
+        
     except Exception as e:
         print(f"Error playing audio: {e}")
-    finally:
-        pygame.mixer.quit()
+        print("\nTroubleshooting steps:")
+        print("1. Install required packages:")
+        print("   sudo apt-get install -y pulseaudio pulseaudio-module-bluetooth vlc")
+        print("2. Make sure Bluetooth is powered on:")
+        print("   bluetoothctl -- power on")
+        print("3. Check Bluetooth audio status:")
+        print("   pactl list sinks")
 
 def main():
+    # Setup Bluetooth audio
+    setup_bluetooth_audio()
+    
     # Find and connect to the Bluetooth device
     device = find_bluetooth_devices()
     if not device:
@@ -99,8 +120,7 @@ def main():
     # Make sure the device is in pairing mode
     input("Please put your Bluetooth device in pairing mode and press Enter to continue...")
     
-    sock = connect_bluetooth(address)
-    if not sock:
+    if not connect_bluetooth_audio(address):
         sys.exit(1)
     
     try:
@@ -108,8 +128,7 @@ def main():
         play_audio()
     finally:
         # Clean up
-        sock.close()
-        print("Bluetooth connection closed")
+        print("Playback completed")
 
 if __name__ == "__main__":
     main()
