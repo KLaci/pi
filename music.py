@@ -32,6 +32,7 @@ def play_audio():
         
         # Load and play the audio file
         pygame.mixer.music.load(mp3_path)
+        pygame.mixer.music.set_volume(0.1)  # Set volume to 30%
         pygame.mixer.music.play()
         
         # Wait for the audio to finish playing
