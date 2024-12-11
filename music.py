@@ -14,20 +14,36 @@ def run_cmd(cmd, check=True):
     return result.stdout.strip()
 
 def get_bluetooth_devices():
-    # Turn on scanning and look for devices
-    run_cmd("bluetoothctl -- timeout 5 scan on", check=False)
-    time.sleep(5)
-    # List devices
-    output = run_cmd("bluetoothctl devices", check=False)
-    print(output)
+    # Clear the device list first
+    run_cmd("bluetoothctl -- remove-all-devices", check=False)
+    
+    # Turn on bluetooth adapter if it's not already on
+    run_cmd("bluetoothctl -- power on")
+    
+    # Start scanning with more time and verbose output
+    print("Starting scan...")
+    run_cmd("bluetoothctl -- scan on", check=False)
+    
+    # Wait longer for devices to be discovered
+    print("Scanning for devices... (10 seconds)")
+    time.sleep(10)
+    
+    # Stop scanning
+    run_cmd("bluetoothctl -- scan off")
+    
+    # List devices with verbose output
+    print("Getting device list...")
+    output = run_cmd("bluetoothctl devices")
+    print("Raw output:", output)
+    
     devices = []
-    # Expected line format: "Device XX:XX:XX:XX:XX:XX DeviceName"
     for line in output.splitlines():
         parts = line.split(" ", 2)
         if len(parts) == 3:
             mac = parts[1]
             dev_name = parts[2]
             devices.append((mac, dev_name))
+    
     return devices
 
 def ensure_bluetooth_powered():
