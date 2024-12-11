@@ -1,134 +1,57 @@
 import bluetooth
+import pygame
 import time
-import difflib
-import sys
-import os
 import subprocess
-import dbus
+import sys
 
-device_name = "LAMAX Beat SE-1"  # The friendly name of your Bluetooth device
-mp3_path = "/home/admin/W/pi/demo.mp3"  # Path to the MP3 file you want to play
+# Bluetooth speaker MAC address and audio file path
+mac_address = "AB:76:6F:5B:A3:D4"
+mp3_path = "/home/admin/W/pi/demo.mp3"
 
-def setup_bluetooth_audio():
+def connect_bluetooth():
     try:
-        # Make sure Bluetooth audio services are running
-        os.system('pulseaudio -k')
-        time.sleep(1)
-        os.system('pulseaudio --start')
+        # Try to connect to the Bluetooth speaker
+        print(f"Attempting to connect to {mac_address}...")
+        
+        # Use bluetoothctl to connect (more reliable than pure Python approach)
+        subprocess.run(['bluetoothctl', 'connect', mac_address], check=True)
+        
+        # Wait for connection to establish
         time.sleep(2)
-        os.system('bluetoothctl -- power on')
-        print("Bluetooth audio services initialized")
+        print("Successfully connected to Bluetooth speaker")
+        return True
+        
     except Exception as e:
-        print(f"Error setting up Bluetooth audio: {e}")
-
-def find_bluetooth_devices():
-    print("Scanning for Bluetooth devices...")
-    nearby_devices = bluetooth.discover_devices(duration=8, lookup_names=True)
-    
-    if not nearby_devices:
-        print("No Bluetooth devices found")
-        return None
-    
-    print("\nFound devices:")
-    for addr, name in nearby_devices:
-        print(f"  {name} ({addr})")
-    
-    # Find the best match for our device name
-    device_names = [name for _, name in nearby_devices]
-    closest_match = difflib.get_close_matches(device_name, device_names, n=1, cutoff=0.5)
-    
-    if not closest_match:
-        print(f"\nNo device similar to '{device_name}' found")
-        return None
-    
-    # Get the address for the matched device
-    for addr, name in nearby_devices:
-        if name == closest_match[0]:
-            return (addr, name)
-    
-    return None
-
-def connect_bluetooth_audio(address):
-    try:
-        print("Attempting to connect Bluetooth audio...")
-        
-        # Connect using bluetoothctl
-        commands = [
-            f'connect {address}',
-            'trust {address}',
-            f'pair {address}',
-            'info {address}'
-        ]
-        
-        for cmd in commands:
-            result = subprocess.run(['bluetoothctl', cmd.format(address=address)], 
-                                 capture_output=True, text=True)
-            print(f"Executing: {cmd}")
-            print(result.stdout)
-            time.sleep(2)
-        
-        # Wait for audio profile to be set up
-        time.sleep(3)
-        
-        # Check if device is connected
-        result = subprocess.run(['bluetoothctl', 'info', address], 
-                              capture_output=True, text=True)
-        
-        if "Connected: yes" in result.stdout:
-            print("Successfully connected to Bluetooth audio device!")
-            return True
-        else:
-            print("Failed to connect to Bluetooth audio device")
-            return False
-            
-    except Exception as e:
-        print(f"Error connecting Bluetooth audio: {e}")
+        print(f"Failed to connect to Bluetooth speaker: {str(e)}")
         return False
 
 def play_audio():
     try:
-        print(f"Playing: {mp3_path}")
-        # Use VLC to stream audio through Bluetooth
-        cmd = ['cvlc', '--play-and-exit', mp3_path]
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Initialize pygame mixer
+        pygame.mixer.init()
         
-        # Wait for playback to complete
-        process.wait()
+        # Load and play the audio file
+        pygame.mixer.music.load(mp3_path)
+        pygame.mixer.music.play()
         
+        # Wait for the audio to finish playing
+        while pygame.mixer.music.get_busy():
+            time.sleep(1)
+            
     except Exception as e:
-        print(f"Error playing audio: {e}")
-        print("\nTroubleshooting steps:")
-        print("1. Install required packages:")
-        print("   sudo apt-get install -y pulseaudio pulseaudio-module-bluetooth vlc")
-        print("2. Make sure Bluetooth is powered on:")
-        print("   bluetoothctl -- power on")
-        print("3. Check Bluetooth audio status:")
-        print("   pactl list sinks")
+        print(f"Error playing audio: {str(e)}")
+    finally:
+        pygame.mixer.quit()
 
 def main():
-    # Setup Bluetooth audio
-    setup_bluetooth_audio()
-    
-    # Find and connect to the Bluetooth device
-    device = find_bluetooth_devices()
-    if not device:
-        sys.exit(1)
-        
-    address, name = device
-    print(f"\nAttempting to connect to {name} ({address})")
-    
-    # Make sure the device is in pairing mode
-    input("Please put your Bluetooth device in pairing mode and press Enter to continue...")
-    
-    if not connect_bluetooth_audio(address):
-        sys.exit(1)
-    
-    try:
-        # Play the audio file
+    # First, try to connect to the Bluetooth speaker
+    if connect_bluetooth():
+        # If connection successful, play the audio
+        print(f"Playing: {mp3_path}")
         play_audio()
-    finally:
-        # Clean up
-        print("Playback completed")
+    else:
+        print("Exiting due to connection failure")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
