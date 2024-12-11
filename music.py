@@ -34,16 +34,40 @@ def find_bluetooth_devices():
     
     return None
 
-def connect_bluetooth(address):
-    try:
-        # Create a Bluetooth socket
-        sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-        sock.connect((address, 1))
-        print(f"Successfully connected to the device!")
-        return sock
-    except bluetooth.BluetoothError as e:
-        print(f"Failed to connect: {e}")
+def find_rfcomm_channel(addr):
+    print("Searching for available RFCOMM channels...")
+    services = bluetooth.find_service(address=addr)
+    if not services:
+        print("No services found. Using default channel.")
         return None
+    
+    for svc in services:
+        if "RFCOMM" in str(svc):
+            return svc["port"]
+    return None
+
+def connect_bluetooth(address):
+    # First, try to find the correct RFCOMM channel
+    channel = find_rfcomm_channel(address)
+    if channel is None:
+        # Try common channels if service discovery fails
+        channels_to_try = [1, 2, 3, 4]
+    else:
+        channels_to_try = [channel]
+
+    for channel in channels_to_try:
+        try:
+            print(f"Trying to connect on channel {channel}...")
+            sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+            sock.connect((address, channel))
+            print(f"Successfully connected to the device on channel {channel}!")
+            return sock
+        except bluetooth.BluetoothError as e:
+            print(f"Failed to connect on channel {channel}: {e}")
+            continue
+    
+    print("Could not connect on any channel")
+    return None
 
 def play_audio():
     try:
@@ -71,6 +95,9 @@ def main():
         
     address, name = device
     print(f"\nAttempting to connect to {name} ({address})")
+    
+    # Make sure the device is in pairing mode
+    input("Please put your Bluetooth device in pairing mode and press Enter to continue...")
     
     sock = connect_bluetooth(address)
     if not sock:
