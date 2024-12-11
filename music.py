@@ -19,6 +19,7 @@ def get_bluetooth_devices():
     time.sleep(5)
     # List devices
     output = run_cmd("bluetoothctl devices", check=False)
+    print(output)
     devices = []
     # Expected line format: "Device XX:XX:XX:XX:XX:XX DeviceName"
     for line in output.splitlines():
