@@ -1,58 +1,75 @@
 #!/usr/bin/python3
 
 import RPi.GPIO as GPIO
-from mfrc522 import SimpleMFRC522
+import spidev
 import time
-import signal
 
-class TimeoutError(Exception):
-    pass
+def test_spi():
+    try:
+        # Initialize SPI
+        spi = spidev.SpiDev()
+        spi.open(0, 0)  # Bus 0, Device 0
+        spi.max_speed_hz = 1000000  # 1MHz
+        print("SPI initialized successfully!")
+        return True
+    except Exception as e:
+        print(f"SPI Error: {str(e)}")
+        return False
 
-def timeout_handler(signum, frame):
-    raise TimeoutError("Card read timed out!")
+def test_gpio():
+    try:
+        # Test RST pin (GPIO25)
+        RST_PIN = 25
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(RST_PIN, GPIO.OUT)
+        
+        # Toggle RST pin
+        print("Testing RST pin...")
+        GPIO.output(RST_PIN, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(RST_PIN, GPIO.LOW)
+        time.sleep(0.1)
+        GPIO.output(RST_PIN, GPIO.HIGH)
+        print("RST pin test completed!")
+        return True
+    except Exception as e:
+        print(f"GPIO Error: {str(e)}")
+        return False
 
 def main():
-    # Create an object of the class MFRC522
-    reader = SimpleMFRC522()
+    print("Starting RC522 connection test...")
+    print("\nChecking connections...")
+    print("------------------------")
     
-    # Set up the timeout signal
-    signal.signal(signal.SIGALRM, timeout_handler)
+    # Test SPI
+    print("\n1. Testing SPI connection:")
+    spi_ok = test_spi()
+    
+    # Test GPIO
+    print("\n2. Testing GPIO connection:")
+    gpio_ok = test_gpio()
+    
+    print("\nTest Results:")
+    print("------------------------")
+    print(f"SPI Connection: {'✓ OK' if spi_ok else '✗ FAILED'}")
+    print(f"GPIO Connection: {'✓ OK' if gpio_ok else '✗ FAILED'}")
+    
+    if spi_ok and gpio_ok:
+        print("\nAll connections appear to be working!")
+        print("\nWiring Reference:")
+        print("------------------------")
+        print("RC522 Pin  ->  Raspberry Pi Pin")
+        print("SDA        ->  Pin 24 (GPIO8)")
+        print("SCK        ->  Pin 23 (GPIO11)")
+        print("MOSI       ->  Pin 19 (GPIO10)")
+        print("MISO       ->  Pin 21 (GPIO9)")
+        print("GND        ->  Any GND pin")
+        print("RST        ->  Pin 22 (GPIO25)")
+        print("3.3V       ->  3.3V")
+    else:
+        print("\nSome connections failed! Please check your wiring.")
 
-    try:
-        print("RFID Reader is ready!")
-        print("Please place your card near the reader...")
-        
-        while True:
-            try:
-                print("\nWaiting for card...")
-                # Set 5 second timeout for read operation
-                signal.alarm(5)
-                
-                # Reading the card
-                id, text = reader.read()
-                
-                # Disable the alarm after successful read
-                signal.alarm(0)
-                
-                # Print the card ID
-                print(f"Success! Card ID: {id}")
-                
-                # Wait a bit before the next read
-                time.sleep(2)
-                
-            except TimeoutError:
-                print("No card detected. Please try again.")
-                continue
-            except Exception as e:
-                print(f"Error reading card: {str(e)}")
-                continue
-            
-    except KeyboardInterrupt:
-        print("\nProgram terminated by user")
-        
-    finally:
-        # Clean up GPIO on program exit
-        GPIO.cleanup()
+    GPIO.cleanup()
 
 if __name__ == "__main__":
     main()
