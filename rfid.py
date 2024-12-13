@@ -14,6 +14,7 @@ def main():
         
         while True:
             # Reading the card
+            print("Reading card...")
             id, text = reader.read()
             
             # Print the card ID
