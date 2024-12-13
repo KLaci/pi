@@ -5,6 +5,12 @@ from pirc522 import RFID
 import time
 
 def main():
+    # Clean up any previous GPIO settings
+    GPIO.cleanup()
+    
+    # Disable GPIO warnings
+    GPIO.setwarnings(False)
+    
     # Create an object of the class RFID
     rdr = RFID()
     
