@@ -20,3 +20,5 @@ diskutil unmountDisk /dev/disk15
 diskutil unmountDisk /dev/disk16
 
 sudo dd if=/dev/rdisk15 of=/dev/rdisk16 bs=1m
+
+sudo ~/rfid_env/bin/python3 rfid.py

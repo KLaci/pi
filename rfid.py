@@ -15,6 +15,9 @@ def main():
         # Create an object of the class RFID
         rdr = RFID()
         
+        # Set antenna gain to maximum
+        rdr.dev_write(0x26, 0x60)  # RF Level: maximum power (7) << 4
+        
         # Test if RFID reader is connected properly
         try:
             rdr.dev_write(0x2A, 0x8D) # Try writing to a register
@@ -42,17 +45,26 @@ def main():
             (error, data) = rdr.request()
             if error:
                 print(f"Error during request: {error}")
-            if not error:
+            else:
                 print("\nTag detected!")
+                print(f"Request data: {data}")
                 
                 # Get anti-collision
                 (error, uid) = rdr.anticoll()
                 if error:
                     print(f"Error during anticoll: {error}")
-                if not error:
+                else:
                     # Convert UID to string
                     card_id = ''.join(str(x) for x in uid)
                     print(f"Card ID: {card_id}")
+                    print(f"Raw UID: {uid}")
+                    
+                    # Try to select the card
+                    error = rdr.select_tag(uid)
+                    if error:
+                        print(f"Error selecting card: {error}")
+                    else:
+                        print("Card selected successfully!")
                     
                     time.sleep(1)
             
