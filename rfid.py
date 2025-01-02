@@ -19,6 +19,7 @@ def main():
         try:
             rdr.dev_write(0x2A, 0x8D) # Try writing to a register
             connection_status = rdr.dev_read(0x2A) # Read it back
+            print(f"Connection status: {connection_status}")
             if connection_status == 0x8D:
                 print("RFID Reader is connected and working properly!")
             else:
