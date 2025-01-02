@@ -5,67 +5,48 @@ from pirc522 import RFID
 import time
 
 def main():
+    # Disable GPIO warnings
+    GPIO.setwarnings(False)
+    
+    # Create an RFID reader object with pins using BCM numbering
+    rdr = RFID()
+    
+    # Quickly check if RFID reader is responsive by writing and reading a known register
     try:
-        # Clean up any previous GPIO settings
-        GPIO.cleanup()
-        
-        # Disable GPIO warnings
-        GPIO.setwarnings(False)
-        
-        # Create an object of the class RFID
-        rdr = RFID()
-        
-        # Test if RFID reader is connected properly
-        try:
-            rdr.dev_write(0x2A, 0x8D) # Try writing to a register
-            connection_status = rdr.dev_read(0x2A) # Read it back
-            print(f"Connection status: {connection_status}")
-            if connection_status == 0x8D:
-                print("RFID Reader is connected and working properly!")
-            else:
-                print("Error: RFID Reader not responding correctly")
-                return
-        except Exception as e:
-            print(f"Error connecting to RFID Reader: {str(e)}")
-            print("Please check your wiring connections")
+        test_register = 0x2A
+        test_value = 0x8D
+        rdr.dev_write(test_register, test_value)
+        connection_status = rdr.dev_read(test_register)
+        if connection_status != test_value:
+            print("Error: RFID Reader not responding correctly")
             return
-            
-        print("Please place your card near the reader...")
-        
+        print("RFID Reader is connected and working properly!")
+    except Exception as e:
+        print(f"Error connecting to RFID Reader: {e}")
+        print("Please check your wiring connections")
+        return
+    
+    print("Place your card near the reader... (Ctrl+C to exit)")
+    
+    try:
         while True:
-            print("\nWaiting for card...")
-            
-            # Wait for tag
+            # Wait for a card to appear
             rdr.wait_for_tag()
-            
-            # Request tag
             (error, data) = rdr.request()
-            if error:
-                print(f"Error during request: {error}")
             if not error:
-                print("\nTag detected!")
-                
-                # Get anti-collision
                 (error, uid) = rdr.anticoll()
-                if error:
-                    print(f"Error during anticoll: {error}")
                 if not error:
-                    # Convert UID to string
+                    # Convert UID to a readable string
                     card_id = ''.join(str(x) for x in uid)
-                    print(f"Card ID: {card_id}")
-                    
-                    time.sleep(1)
-            
-            time.sleep(0.1)
-            
+                    print(f"Card detected! Card ID: {card_id}")
+                    time.sleep(1)  # Give some delay before the next loop
+            time.sleep(0.1)  # Slight pause to avoid excessive polling
     except KeyboardInterrupt:
         print("\nProgram terminated by user")
-        
     finally:
-        # Clean up
+        # Clean up after the loop
         GPIO.cleanup()
-        if 'rdr' in locals():
-            rdr.cleanup()
+        rdr.cleanup()
 
 if __name__ == "__main__":
     main()
