@@ -40,11 +40,15 @@ def main():
             
             # Request tag
             (error, data) = rdr.request()
+            if error:
+                print(f"Error during request: {error}")
             if not error:
                 print("\nTag detected!")
                 
                 # Get anti-collision
                 (error, uid) = rdr.anticoll()
+                if error:
+                    print(f"Error during anticoll: {error}")
                 if not error:
                     # Convert UID to string
                     card_id = ''.join(str(x) for x in uid)
