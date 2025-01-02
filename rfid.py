@@ -5,17 +5,30 @@ from pirc522 import RFID
 import time
 
 def main():
-    # Clean up any previous GPIO settings
-    GPIO.cleanup()
-    
-    # Disable GPIO warnings
-    GPIO.setwarnings(False)
-    
-    # Create an object of the class RFID
-    rdr = RFID()
-    
     try:
-        print("RFID Reader is ready!")
+        # Clean up any previous GPIO settings
+        GPIO.cleanup()
+        
+        # Disable GPIO warnings
+        GPIO.setwarnings(False)
+        
+        # Create an object of the class RFID
+        rdr = RFID()
+        
+        # Test if RFID reader is connected properly
+        try:
+            rdr.dev_write(0x2A, 0x8D) # Try writing to a register
+            connection_status = rdr.dev_read(0x2A) # Read it back
+            if connection_status == 0x8D:
+                print("RFID Reader is connected and working properly!")
+            else:
+                print("Error: RFID Reader not responding correctly")
+                return
+        except Exception as e:
+            print(f"Error connecting to RFID Reader: {str(e)}")
+            print("Please check your wiring connections")
+            return
+            
         print("Please place your card near the reader...")
         
         while True:
@@ -46,7 +59,8 @@ def main():
     finally:
         # Clean up
         GPIO.cleanup()
-        rdr.cleanup()
+        if 'rdr' in locals():
+            rdr.cleanup()
 
 if __name__ == "__main__":
     main()
