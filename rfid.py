@@ -12,11 +12,23 @@ def main():
         # Disable GPIO warnings
         GPIO.setwarnings(False)
         
-        # Create an object of the class RFID
-        rdr = RFID()
+        # Set GPIO mode
+        GPIO.setmode(GPIO.BCM)
+        
+        # Create an object of the class RFID with explicit pin configuration
+        rdr = RFID(pin_rst=25,    # RST pin
+                   pin_ce=8,      # SDA (CE0) pin
+                   pin_irq=None)  # IRQ pin not connected
         
         # Set antenna gain to maximum
         rdr.dev_write(0x26, 0x60)  # RF Level: maximum power (7) << 4
+        
+        # Additional initialization
+        rdr.dev_write(0x11, 0x5A)  # Define automatic reception
+        rdr.dev_write(0x2D, 0x00)  # TModeReg
+        rdr.dev_write(0x2C, 0x00)  # TPrescalerReg
+        rdr.dev_write(0x2B, 0x4D)  # TReloadReg high
+        rdr.dev_write(0x2A, 0x00)  # TReloadReg low
         
         # Test if RFID reader is connected properly
         try:
