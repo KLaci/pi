@@ -12,9 +12,6 @@ def main():
         # Disable GPIO warnings
         GPIO.setwarnings(False)
         
-        # Set GPIO mode
-        GPIO.setmode(GPIO.BCM)
-        
         # Create an object of the class RFID with explicit pin configuration
         rdr = RFID(pin_rst=25,    # RST pin
                    pin_ce=8,      # SDA (CE0) pin
