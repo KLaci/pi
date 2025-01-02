@@ -12,9 +12,12 @@ def main():
         # Disable GPIO warnings
         GPIO.setwarnings(False)
         
+        # Set GPIO mode to BOARD
+        GPIO.setmode(GPIO.BOARD)
+        
         # Create an object of the class RFID with explicit pin configuration
-        rdr = RFID(pin_rst=25,    # RST pin
-                   pin_ce=8,      # SDA (CE0) pin
+        rdr = RFID(pin_rst=22,    # RST pin (Physical pin 22)
+                   pin_ce=24,     # SDA/CE0 pin (Physical pin 24)
                    pin_irq=None)  # IRQ pin not connected
         
         # Set antenna gain to maximum
