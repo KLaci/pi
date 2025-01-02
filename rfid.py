@@ -7,11 +7,9 @@ import time
 def main():
     # Disable GPIO warnings
     GPIO.setwarnings(False)
-    # Switch from BOARD to BCM numbering
-    GPIO.setmode(GPIO.BCM)
     
     # Create an RFID reader object with pins using BCM numbering
-    rdr = RFID(pin_rst=22, pin_ce=24, pin_irq=None)
+    rdr = RFID()
     
     # Quickly check if RFID reader is responsive by writing and reading a known register
     try:
