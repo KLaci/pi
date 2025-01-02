@@ -5,14 +5,12 @@ from pirc522 import RFID
 import time
 
 def main():
-    # Clean up any previous GPIO settings
-    GPIO.cleanup()
     # Disable GPIO warnings
     GPIO.setwarnings(False)
-    # Set GPIO mode to BOARD
-    GPIO.setmode(GPIO.BOARD)
+    # Switch from BOARD to BCM numbering
+    GPIO.setmode(GPIO.BCM)
     
-    # Create an RFID reader object
+    # Create an RFID reader object with pins using BCM numbering
     rdr = RFID(pin_rst=22, pin_ce=24, pin_irq=None)
     
     # Quickly check if RFID reader is responsive by writing and reading a known register
@@ -48,7 +46,7 @@ def main():
     except KeyboardInterrupt:
         print("\nProgram terminated by user")
     finally:
-        # Clean up
+        # Clean up after the loop
         GPIO.cleanup()
         rdr.cleanup()
 
