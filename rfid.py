@@ -1,53 +1,39 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
-import RPi.GPIO as GPIO
 from pirc522 import RFID
-import time
+import signal
+import sys
+import RPi.GPIO as GPIO
 
-def main():
-    # Disable GPIO warnings
-    GPIO.setwarnings(False)
-    
-    # Create an RFID reader object with pins using BCM numbering
-    rdr = RFID()
-    
-    # Quickly check if RFID reader is responsive by writing and reading a known register
-    try:
-        test_register = 0x2A
-        test_value = 0x8D
-        rdr.dev_write(test_register, test_value)
-        connection_status = rdr.dev_read(test_register)
-        print(f"Connection status: {connection_status}")
-        if connection_status != test_value:
-            print("Error: RFID Reader not responding correctly")
-            return
-        print("RFID Reader is connected and working properly!")
-    except Exception as e:
-        print(f"Error connecting to RFID Reader: {e}")
-        print("Please check your wiring connections")
-        return
-    
-    print("Place your card near the reader... (Ctrl+C to exit)")
-    
-    try:
-        while True:
-            # Wait for a card to appear
-            rdr.wait_for_tag()
-            (error, data) = rdr.request()
-            if not error:
-                (error, uid) = rdr.anticoll()
-                if not error:
-                    # Convert UID to a readable string
-                    card_id = ''.join(str(x) for x in uid)
-                    print(f"Card detected! Card ID: {card_id}")
-                    time.sleep(1)  # Give some delay before the next loop
-            time.sleep(0.1)  # Slight pause to avoid excessive polling
-    except KeyboardInterrupt:
-        print("\nProgram terminated by user")
-    finally:
-        # Clean up after the loop
-        GPIO.cleanup()
-        rdr.cleanup()
+run = True
 
-if __name__ == "__main__":
-    main()
+# GPIO.setwarnings(False) # optionally ignore GPIO warnings
+
+def end_read(signal, frame):
+    global run
+    print("\nCtrl+C captured, ending read.")
+    run = False
+    rfid.cleanup()
+    sys.exit()
+
+signal.signal(signal.SIGINT, end_read)
+
+# Initialize the RFID reader
+# If you used GPIO25 for RST, configure it here
+rfid = RFID(pin_rst=25, pin_ce=0, bus=0, device=0)
+
+print("Starting MFRC522 RFID Reader")
+
+while run:
+    rfid.wait_for_tag()
+    (error, tag_type) = rfid.request()
+    if not error:
+        print("Tag detected!")
+        (error, uid) = rfid.anticoll()
+        if not error:
+            # Print UID
+            print("Card read UID: {}".format(uid))
+            # Select the scanned tag
+            rfid.select_tag(uid)
+            # Stop reading
+            rfid.stop_crypto()
