@@ -17,6 +17,7 @@ def main():
         test_value = 0x8D
         rdr.dev_write(test_register, test_value)
         connection_status = rdr.dev_read(test_register)
+        print(f"Connection status: {connection_status}")
         if connection_status != test_value:
             print("Error: RFID Reader not responding correctly")
             return
