@@ -17,7 +17,6 @@ def main():
         test_value = 0x8D
         rdr.dev_write(test_register, test_value)
         connection_status = rdr.dev_read(test_register)
-        print(f"Connection status: {connection_status}")
         if connection_status != test_value:
             print("Error: RFID Reader not responding correctly")
             return
@@ -31,12 +30,15 @@ def main():
     
     try:
         while True:
-            # Wait for a card to appear
             rdr.wait_for_tag()
             (error, data) = rdr.request()
-            if not error:
+            if error:
+                print(f"RFID request error: {error}, data: {data}")
+            else:
                 (error, uid) = rdr.anticoll()
-                if not error:
+                if error:
+                    print(f"anticoll error: {error}, uid: {uid}")
+                else:
                     # Convert UID to a readable string
                     card_id = ''.join(str(x) for x in uid)
                     print(f"Card detected! Card ID: {card_id}")
