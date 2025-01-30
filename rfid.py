@@ -1,55 +1,12 @@
-#!/usr/bin/python3
-
+from mfrc522 import SimpleMFRC522
 import RPi.GPIO as GPIO
-from pirc522 import RFID
-import time
 
-def main():
-    # Disable GPIO warnings
-    GPIO.setwarnings(False)
-    
-    # Create an RFID reader object with pins using BCM numbering
-    rdr = RFID()
-    
-    # Quickly check if RFID reader is responsive by writing and reading a known register
-    try:
-        test_register = 0x2A
-        test_value = 0x8D
-        rdr.dev_write(test_register, test_value)
-        connection_status = rdr.dev_read(test_register)
-        if connection_status != test_value:
-            print("Error: RFID Reader not responding correctly")
-            return
-        print("RFID Reader is connected and working properly!")
-    except Exception as e:
-        print(f"Error connecting to RFID Reader: {e}")
-        print("Please check your wiring connections")
-        return
-    
-    print("Place your card near the reader... (Ctrl+C to exit)")
-    
-    try:
-        while True:
-            rdr.wait_for_tag()
-            (error, data) = rdr.request()
-            if error:
-                print(f"RFID request error: {error}, data: {data}")
-            else:
-                (error, uid) = rdr.anticoll()
-                if error:
-                    print(f"anticoll error: {error}, uid: {uid}")
-                else:
-                    # Convert UID to a readable string
-                    card_id = ''.join(str(x) for x in uid)
-                    print(f"Card detected! Card ID: {card_id}")
-                    time.sleep(1)  # Give some delay before the next loop
-            time.sleep(0.1)  # Slight pause to avoid excessive polling
-    except KeyboardInterrupt:
-        print("\nProgram terminated by user")
-    finally:
-        # Clean up after the loop
-        GPIO.cleanup()
-        rdr.cleanup()
-
-if __name__ == "__main__":
-    main()
+try:
+    reader = SimpleMFRC522()
+    print("RC522 initialized successfully")
+    print("Please place a tag on the reader")
+    id, text = reader.read()
+    print(f"ID: {id}")
+    print(f"Text: {text}")
+finally:
+    GPIO.cleanup()
