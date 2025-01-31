@@ -72,11 +72,10 @@ class RFIDMusicPlayer:
             while True:
                 print("waiting for tag")
                 # Wait for tag with timeout
-                tag_present = self.rdr.wait_for_tag(timeout=2)
+                self.rdr.wait_for_tag(timeout=2)
                 uid_str = self.get_tag_uid()
                 print("uid_str:", uid_str)
-                print("tag_present:", tag_present)
-                if not tag_present:
+                if not uid_str:
                     print("no tag")
                     if self.currently_playing:
                         self.missing_readings += 1
