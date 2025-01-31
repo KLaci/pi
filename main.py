@@ -73,6 +73,7 @@ class RFIDMusicPlayer:
             while True:
                 self.rdr.wait_for_tag()
                 uid_str = self.get_tag_uid()
+                print("uid_str:", uid_str)
                 
                 if uid_str and uid_str in RFID_MUSIC_MAP:
                     print(f"Tag detected: {uid_str}")
