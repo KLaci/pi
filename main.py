@@ -77,6 +77,7 @@ class RFIDMusicPlayer:
                 if uid_str and uid_str in RFID_MUSIC_MAP:
                     print(f"Tag detected: {uid_str}")
                     self.missing_readings = 0
+                    self.currently_playing = True
                     self.play_music(RFID_MUSIC_MAP[uid_str])
                 else:
                     if self.currently_playing:
@@ -87,7 +88,7 @@ class RFIDMusicPlayer:
                             self.stop_music()
                             self.missing_readings = 0
                 
-                time.sleep(0.1)  # Small delay to prevent CPU overuse
+                time.sleep(0.3)  # Small delay to prevent CPU overuse
 
         except KeyboardInterrupt:
             print("\nShutting down...")
