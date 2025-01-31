@@ -1,4 +1,3 @@
-import bluetooth
 import pygame
 import time
 import subprocess
