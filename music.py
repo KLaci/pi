@@ -5,7 +5,7 @@ import sys
 
 # Bluetooth speaker MAC address and audio file path
 mac_address = "AB:76:6F:5B:A3:D4"
-mp3_path = "/home/admin/W/pi/demo.mp3"
+mp3_path = "/home/admin/W/pi/01.mp3"
 
 def connect_bluetooth():
     try:
