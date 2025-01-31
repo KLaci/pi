@@ -1,4 +1,3 @@
-
 import pygame
 import time
 import subprocess
@@ -72,10 +71,20 @@ class RFIDMusicPlayer:
         try:
             while True:
                 print("waiting for tag")
-                self.rdr.wait_for_tag()
+                # Wait for tag with timeout
+                tag_present = self.rdr.wait_for_tag(timeout_sec=2)
+                if not tag_present:
+                    if self.currently_playing:
+                        self.missing_readings += 1
+                        print(f"Tag missing: count {self.missing_readings}")
+                        
+                        if self.missing_readings >= self.MAX_MISSING_READINGS:
+                            self.stop_music()
+                            self.missing_readings = 0
+                    continue
+                
                 uid_str = self.get_tag_uid()
                 print("uid_str:", uid_str)
-                
                 
                 if uid_str and uid_str in RFID_MUSIC_MAP:
                     print(f"Tag detected: {uid_str}")
