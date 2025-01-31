@@ -74,6 +74,7 @@ class RFIDMusicPlayer:
                 # Wait for tag with timeout
                 tag_present = self.rdr.wait_for_tag(timeout=2)
                 if not tag_present:
+                    print("no tag")
                     if self.currently_playing:
                         self.missing_readings += 1
                         print(f"Tag missing: count {self.missing_readings}")
@@ -83,6 +84,7 @@ class RFIDMusicPlayer:
                             self.missing_readings = 0
                     continue
                 
+                print("tag present")
                 uid_str = self.get_tag_uid()
                 print("uid_str:", uid_str)
                 
