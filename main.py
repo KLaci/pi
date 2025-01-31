@@ -71,23 +71,17 @@ class RFIDMusicPlayer:
 
         try:
             while True:
+                print("waiting for tag")
                 self.rdr.wait_for_tag()
                 uid_str = self.get_tag_uid()
                 print("uid_str:", uid_str)
                 
+                
                 if uid_str and uid_str in RFID_MUSIC_MAP:
                     print(f"Tag detected: {uid_str}")
                     self.missing_readings = 0
-                    self.currently_playing = True
                     self.play_music(RFID_MUSIC_MAP[uid_str])
-                else:
-                    if self.currently_playing:
-                        self.missing_readings += 1
-                        print(f"Tag missing: count {self.missing_readings}")
-                        
-                        if self.missing_readings >= self.MAX_MISSING_READINGS:
-                            self.stop_music()
-                            self.missing_readings = 0
+                    print("music playing")
                 
                 time.sleep(0.3)  # Small delay to prevent CPU overuse
 
