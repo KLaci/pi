@@ -27,7 +27,7 @@ def connect_bluetooth():
 def play_audio():
     try:
         # Initialize pygame mixer with specific audio device settings
-        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096, device='bluealsa')
+        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096)
         
         # Load and play the audio file
         pygame.mixer.music.load(mp3_path)
