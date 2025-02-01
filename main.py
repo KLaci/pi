@@ -78,7 +78,7 @@ class RFIDMusicPlayer:
             
                 print(f"Tag detected: {uid_str}")
                 self.missing_readings = 0
-                self.play_music(f"{uid_str}.mp3")
+                self.play_music(f"music/{uid_str}.mp3")
                 print("music playing")
                 
                 time.sleep(0.3)  # Small delay to prevent CPU overuse
