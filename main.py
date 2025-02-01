@@ -7,12 +7,6 @@ from pirc522 import RFID
 # Bluetooth speaker MAC address
 mac_address = "AB:76:6F:5B:A3:D4"
 
-# RFID to music mapping
-RFID_MUSIC_MAP = {
-    "99,22,142,228,31": "01.mp3",
-    # Add more mappings as needed
-}
-
 class RFIDMusicPlayer:
     def __init__(self):
         self.rdr = RFID()
@@ -81,12 +75,11 @@ class RFIDMusicPlayer:
                             self.stop_music()
                     continue
                 
-                
-                if uid_str and uid_str in RFID_MUSIC_MAP:
-                    print(f"Tag detected: {uid_str}")
-                    self.missing_readings = 0
-                    self.play_music(RFID_MUSIC_MAP[uid_str])
-                    print("music playing")
+            
+                print(f"Tag detected: {uid_str}")
+                self.missing_readings = 0
+                self.play_music(f"{uid_str}.mp3")
+                print("music playing")
                 
                 time.sleep(0.3)  # Small delay to prevent CPU overuse
 
