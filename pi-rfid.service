@@ -1,0 +1,14 @@
+[Unit]
+Description=Pi RFID Service
+After=network.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/W/pi
+ExecStart=/home/admin/rfid_env/bin/python3 /home/admin/W/pi/main.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target 
