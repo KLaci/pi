@@ -1,11 +1,39 @@
+import os
+import re
 import pygame
 import time
 import subprocess
 import sys
 from pirc522 import RFID
 
-# Bluetooth speaker MAC address
-mac_address = "AB:76:6F:5B:A3:D4"
+def find_usb_audio_card():
+    """Return the ALSA card number of the USB-connected speaker, or None.
+
+    Parses `aplay -l` looking for a USB audio device.
+    """
+    try:
+        result = subprocess.run(
+            ['aplay', '-l'],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        output = result.stdout
+    except Exception as e:
+        print(f"Could not list audio devices: {str(e)}")
+        return None
+
+    # Lines look like: "card 1: Device [USB Audio Device], device 0: ..."
+    for line in output.splitlines():
+        if 'card' in line.lower() and 'usb' in line.lower():
+            match = re.search(r'card (\d+):', line)
+            if match:
+                card = int(match.group(1))
+                print(f"Found USB audio device: {line.strip()}")
+                return card
+
+    print("No USB audio device found in 'aplay -l' output.")
+    return None
 
 class RFIDMusicPlayer:
     def __init__(self):
@@ -13,25 +41,29 @@ class RFIDMusicPlayer:
         self.currently_playing = False
         self.missing_readings = 0
         self.MAX_MISSING_READINGS = 3
-        pygame.mixer.init()
-        
-    def connect_bluetooth(self):
-        try:
-            print(f"Attempting to connect to {mac_address}...")
-            subprocess.run(['bluetoothctl', 'connect', mac_address], check=True)
-            time.sleep(2)
-            print("Successfully connected to Bluetooth speaker")
-            return True
-        except Exception as e:
-            print(f"Failed to connect to Bluetooth speaker: {str(e)}")
+
+    def connect_speaker(self):
+        # Locate the USB speaker and point SDL/pygame's ALSA backend at it
+        card = find_usb_audio_card()
+        if card is None:
+            print("No USB speaker detected")
             return False
+
+        # SDL (used by pygame) honours these env vars to pick the ALSA output device
+        device = f'hw:{card},0'
+        os.environ['SDL_AUDIODRIVER'] = 'alsa'
+        os.environ['AUDIODEV'] = device
+        print(f"Routing audio: SDL_AUDIODRIVER=alsa AUDIODEV={device}")
+
+        pygame.mixer.init()
+        return True
 
     def play_music(self, music_file):
         try:
             if not self.currently_playing:
                 full_path = f"/home/admin/W/pi/{music_file}"
                 pygame.mixer.music.load(full_path)
-                pygame.mixer.music.set_volume(0.1)
+                pygame.mixer.music.set_volume(0.6)
                 pygame.mixer.music.play(-1)  # -1 means loop indefinitely
                 self.currently_playing = True
                 print(f"Started playing: {music_file}")
@@ -58,8 +90,8 @@ class RFIDMusicPlayer:
 
     def run(self):
         print("Starting RFID Music Player...")
-        if not self.connect_bluetooth():
-            print("Exiting due to Bluetooth connection failure")
+        if not self.connect_speaker():
+            print("Exiting due to USB speaker setup failure")
             return
 
         try:
