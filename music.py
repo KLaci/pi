@@ -8,7 +8,7 @@ import sys
 import pygame
 
 # Audio file path
-mp3_path = "/home/admin/W/pi/01.mp3"
+mp3_path = "/home/admin/W/pi/demo.mp3"
 
 # Logging setup: timestamped output to stdout so you can spot misconfiguration
 logging.basicConfig(
