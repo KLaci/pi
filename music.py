@@ -72,7 +72,7 @@ def play_audio():
         # Load and play the audio file
         log.info("Loading audio file: %s", mp3_path)
         pygame.mixer.music.load(mp3_path)
-        pygame.mixer.music.set_volume(0.1)  # Set volume to 10%
+        pygame.mixer.music.set_volume(0.8)  # Set volume to 10%
         log.debug("Volume set to %.2f", pygame.mixer.music.get_volume())
         pygame.mixer.music.play()
         log.info("Playback started.")
