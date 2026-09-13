@@ -1,5 +1,5 @@
 # connect on ssh
-ssh admin@raspberrypi.local
+ssh admin@raspberrypi.local (password:password)
 
 # servo connection
 - Brown GND
