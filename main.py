@@ -3,6 +3,7 @@ import os
 import queue
 import signal
 import sys
+import time
 from pathlib import Path
 
 from hardware import is_dev_mode, make_player, make_reader
@@ -15,6 +16,7 @@ DATA_DIR = BASE_DIR / "data"
 HOST = os.environ.get("PI_HOST", "0.0.0.0")
 PORT = int(os.environ.get("PI_PORT", "8080"))
 MAX_MISSING_READINGS = 3
+RESUME_WINDOW = 5.0  # seconds: re-tapping a card this soon after removal resumes instead of restarting
 
 log = logging.getLogger("player")
 
@@ -30,6 +32,9 @@ class PlayerLoop:
         self.source = None       # "card" or "dashboard"
         self.missing = 0
         self.running = True
+        self.positions = {}          # uid -> (position_seconds, stopped_at_monotonic)
+        self.play_started_at = None  # monotonic time the current playback began
+        self.play_offset = 0.0       # position (seconds) the current playback began at
 
     def _path(self, uid):
         return MUSIC_DIR / f"{uid}.mp3"
@@ -37,14 +42,26 @@ class PlayerLoop:
     def _publish(self):
         self.store.set_status(now_playing=self.playing, card_present=self.current, source=self.source)
 
-    def _play(self, uid, source):
+    def _resume_position(self, uid):
+        saved = self.positions.pop(uid, None)
+        if not saved:
+            return 0.0
+        position, stopped_at = saved
+        if time.monotonic() - stopped_at > RESUME_WINDOW:
+            return 0.0
+        return position
+
+    def _play(self, uid, source, resume=False):
         path = self._path(uid)
         if not path.is_file():
             return "no_file"
-        if not self.player.play(path):
+        start = self._resume_position(uid) if resume else 0.0
+        if not self.player.play(path, start=start):
             return "no_speaker"
         self.playing = uid
         self.source = source
+        self.play_offset = start
+        self.play_started_at = time.monotonic()
         return "played"
 
     def _stop_playback(self):
@@ -52,13 +69,17 @@ class PlayerLoop:
             self.player.stop()
             self.store.note_stop(self.playing)
             log.info("Stopped %s", self.playing)
+            elapsed = self.play_offset + (time.monotonic() - self.play_started_at)
+            self.positions[self.playing] = (elapsed, time.monotonic())
         self.playing = None
         self.source = None
+        self.play_started_at = None
+        self.play_offset = 0.0
 
     def _card_placed(self, uid):
         self._stop_playback()
         self.current = uid
-        action = self._play(uid, "card")
+        action = self._play(uid, "card", resume=True)
         self.store.note_tap(uid, action)
         log.info("Tap %s: %s", uid, action)
         self._publish()

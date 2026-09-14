@@ -32,8 +32,8 @@ def find_usb_audio_card():
 class NullPlayer:
     """Logs instead of playing. Used for local development."""
 
-    def play(self, path):
-        log.info("[null player] play %s", path)
+    def play(self, path, start=0.0):
+        log.info("[null player] play %s%s", path, f" (resume at {start:.1f}s)" if start else "")
         return True
 
     def stop(self):
@@ -70,14 +70,21 @@ class PygamePlayer:
         log.info("Audio ready on hw:%s,0", card)
         return True
 
-    def play(self, path):
+    def play(self, path, start=0.0):
         if not self._ensure_init():
             return False
         try:
             music = self.pygame.mixer.music
             music.load(str(path))
             music.set_volume(self.volume)
-            music.play(-1)
+            if start > 0:
+                try:
+                    music.play(-1, start)
+                except Exception as e:
+                    log.warning("Could not resume at %.1fs (%s), starting from 0", start, e)
+                    music.play(-1)
+            else:
+                music.play(-1)
             return True
         except Exception as e:
             log.error("Error playing %s: %s", path, e)
