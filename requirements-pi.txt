@@ -1,0 +1,3 @@
+-r requirements.txt
+pygame
+pi-rc522

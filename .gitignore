@@ -1,1 +1,6 @@
 secrets.txt
+data/
+.venv/
+__pycache__/
+music/*
+!music/.gitkeep

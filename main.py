@@ -1,125 +1,156 @@
+import logging
 import os
-import re
-import pygame
-import time
-import subprocess
+import queue
+import signal
 import sys
-from pirc522 import RFID
+from pathlib import Path
 
-def find_usb_audio_card():
-    """Return the ALSA card number of the USB-connected speaker, or None.
+from hardware import is_dev_mode, make_player, make_reader
+from store import Store
+from web import create_app, start_web
 
-    Parses `aplay -l` looking for a USB audio device.
-    """
-    try:
-        result = subprocess.run(
-            ['aplay', '-l'],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        output = result.stdout
-    except Exception as e:
-        print(f"Could not list audio devices: {str(e)}")
-        return None
+BASE_DIR = Path(__file__).resolve().parent
+MUSIC_DIR = BASE_DIR / "music"
+DATA_DIR = BASE_DIR / "data"
+HOST = os.environ.get("PI_HOST", "0.0.0.0")
+PORT = int(os.environ.get("PI_PORT", "8080"))
+MAX_MISSING_READINGS = 3
 
-    # Lines look like: "card 1: Device [USB Audio Device], device 0: ..."
-    for line in output.splitlines():
-        if 'card' in line.lower() and 'usb' in line.lower():
-            match = re.search(r'card (\d+):', line)
-            if match:
-                card = int(match.group(1))
-                print(f"Found USB audio device: {line.strip()}")
-                return card
+log = logging.getLogger("player")
 
-    print("No USB audio device found in 'aplay -l' output.")
-    return None
 
-class RFIDMusicPlayer:
-    def __init__(self):
-        self.rdr = RFID()
-        self.currently_playing = False
-        self.missing_readings = 0
-        self.MAX_MISSING_READINGS = 3
+class PlayerLoop:
+    def __init__(self, reader, player, store, commands):
+        self.reader = reader
+        self.player = player
+        self.store = store
+        self.commands = commands
+        self.current = None      # uid of the card on the reader
+        self.playing = None      # uid whose file is playing
+        self.source = None       # "card" or "dashboard"
+        self.missing = 0
+        self.running = True
 
-    def connect_speaker(self):
-        # Locate the USB speaker and point SDL/pygame's ALSA backend at it
-        card = find_usb_audio_card()
-        if card is None:
-            print("No USB speaker detected")
-            return False
+    def _path(self, uid):
+        return MUSIC_DIR / f"{uid}.mp3"
 
-        # SDL (used by pygame) honours these env vars to pick the ALSA output device
-        device = f'hw:{card},0'
-        os.environ['SDL_AUDIODRIVER'] = 'alsa'
-        os.environ['AUDIODEV'] = device
-        print(f"Routing audio: SDL_AUDIODRIVER=alsa AUDIODEV={device}")
+    def _publish(self):
+        self.store.set_status(now_playing=self.playing, card_present=self.current, source=self.source)
 
-        pygame.mixer.init()
-        return True
+    def _play(self, uid, source):
+        path = self._path(uid)
+        if not path.is_file():
+            return "no_file"
+        if not self.player.play(path):
+            return "no_speaker"
+        self.playing = uid
+        self.source = source
+        return "played"
 
-    def play_music(self, music_file):
-        try:
-            if not self.currently_playing:
-                full_path = f"/home/admin/W/pi/{music_file}"
-                pygame.mixer.music.load(full_path)
-                pygame.mixer.music.set_volume(0.6)
-                pygame.mixer.music.play(-1)  # -1 means loop indefinitely
-                self.currently_playing = True
-                print(f"Started playing: {music_file}")
-        except Exception as e:
-            print(f"Error playing audio: {str(e)}")
+    def _stop_playback(self):
+        if self.playing:
+            self.player.stop()
+            self.store.note_stop(self.playing)
+            log.info("Stopped %s", self.playing)
+        self.playing = None
+        self.source = None
 
-    def stop_music(self):
-        if self.currently_playing:
-            pygame.mixer.music.stop()
-            self.currently_playing = False
-            print("Stopped playing music")
+    def _card_placed(self, uid):
+        self._stop_playback()
+        self.current = uid
+        action = self._play(uid, "card")
+        self.store.note_tap(uid, action)
+        log.info("Tap %s: %s", uid, action)
+        self._publish()
 
-    def get_tag_uid(self):
-        (error, tag_type) = self.rdr.request()
-        if not error:
-            (error, uid) = self.rdr.anticoll()
-            if not error:
-                return ','.join(map(str, uid))
-        return None
+    def _card_removed(self):
+        log.info("Card removed: %s", self.current)
+        self.current = None
+        self.missing = 0
+        if self.source == "card":
+            self._stop_playback()
+        self._publish()
 
-    def cleanup(self):
-        self.rdr.cleanup()
-        pygame.mixer.quit()
+    def _handle_command(self, cmd, uid):
+        if cmd == "reload":
+            # Restart the playing card, or start a present card that had no file
+            if uid == self.playing or (uid == self.current and self.playing is None):
+                action = self._play(uid, "card")
+                log.info("Reloading %s after upload: %s", uid, action)
+        elif cmd == "play":
+            self._stop_playback()
+            action = self._play(uid, "dashboard")
+            log.info("Dashboard play %s: %s", uid, action)
+        elif cmd == "stop":
+            if uid is None or uid == self.playing:
+                self._stop_playback()
+        self._publish()
+
+    def _drain_commands(self):
+        while True:
+            try:
+                cmd, uid = self.commands.get_nowait()
+            except queue.Empty:
+                return
+            try:
+                self._handle_command(cmd, uid)
+            except Exception:
+                log.exception("Command %s failed", cmd)
 
     def run(self):
-        print("Starting RFID Music Player...")
-        if not self.connect_speaker():
-            print("Exiting due to USB speaker setup failure")
-            return
+        log.info("Player loop started")
+        while self.running:
+            self._drain_commands()
+            uid = self.reader.read()
+            if uid:
+                self.missing = 0
+                if uid != self.current:
+                    self._card_placed(uid)
+            elif self.current:
+                self.missing += 1
+                if self.missing >= MAX_MISSING_READINGS:
+                    self._card_removed()
 
-        try:
-            while True:
-                print("waiting for tag")
-                # Wait for tag with timeout
-                self.rdr.wait_for_tag(timeout=0.3)
-                uid_str = self.get_tag_uid()
-                print("uid_str:", uid_str)
-                if not uid_str:
-                    print("no tag")
-                    if self.currently_playing:
-                            self.stop_music()
-                    continue
-                
-            
-                print(f"Tag detected: {uid_str}")
-                self.missing_readings = 0
-                self.play_music(f"music/{uid_str}.mp3")
-                print("music playing")
-                
-                time.sleep(0.3)  # Small delay to prevent CPU overuse
+    def stop(self):
+        self.running = False
 
-        except KeyboardInterrupt:
-            print("\nShutting down...")
-        finally:
-            self.cleanup()
+
+def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+        stream=sys.stdout,
+    )
+    dev = is_dev_mode()
+    log.info("Starting RFID music box in %s mode", "dev" if dev else "pi")
+    MUSIC_DIR.mkdir(exist_ok=True)
+
+    store = Store(DATA_DIR)
+    commands = queue.Queue()
+    reader = make_reader(dev)
+    player = make_player(dev)
+    loop = PlayerLoop(reader, player, store, commands)
+
+    app = create_app(store, commands, reader, MUSIC_DIR, dev)
+    _, server = start_web(app, HOST, PORT)
+
+    def on_signal(signum, frame):
+        log.info("Signal %s received, shutting down", signum)
+        loop.stop()
+
+    signal.signal(signal.SIGTERM, on_signal)
+    signal.signal(signal.SIGINT, on_signal)
+
+    try:
+        loop.run()
+    finally:
+        loop._stop_playback()
+        player.close()
+        reader.close()
+        server.shutdown()
+        log.info("Bye")
+
 
 if __name__ == "__main__":
-    player = RFIDMusicPlayer()
-    player.run() 
+    main()

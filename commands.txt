@@ -25,3 +25,18 @@ sudo ~/rfid_env/bin/python3 rfid.py
 
 rclone sync drive:levizene /home/admin/W/pi/music
 ~/rfid_env/bin/python3 /home/admin/W/pi/main.py
+
+# music box dashboard (main.py hosts it on port 8080)
+# local dev on the mac (fake reader + fake player, dev tap box on the page):
+python3.13 -m venv .venv && .venv/bin/pip install -r requirements.txt
+PI_DEV=1 .venv/bin/python main.py      # http://localhost:8080
+
+# deploy on the pi
+# one time only: the tracked mp3 was untracked from git, keep the pi's copy safe first
+cp ~/W/pi/music/114,140,147,2,111.mp3 ~/
+cd ~/W/pi && git pull && cp ~/114,140,147,2,111.mp3 music/
+~/rfid_env/bin/pip install -r requirements-pi.txt
+sudo cp pi-rfid.service /etc/systemd/system/ && sudo systemctl daemon-reload
+sudo systemctl restart pi-rfid && journalctl -u pi-rfid -f
+# dashboard: http://raspberrypi.local:8080  or  http://$(hostname -I | cut -d' ' -f1):8080
+# data lives in data/cards.json and data/events.json, uploads in music/<uid>.mp3 (both git ignored)

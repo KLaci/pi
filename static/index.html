@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Music Box</title>
+<style>
+  :root {
+    --bg: #f5f4f0; --card: #ffffff; --text: #1f2328; --muted: #6b7280;
+    --line: #e3e1da; --accent: #c2410c; --ok: #15803d; --warn: #b45309; --danger: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 16px 40px; background: var(--bg); color: var(--text);
+         font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 16px; }
+  h2 { font-size: 16px; margin: 28px 0 10px; color: var(--muted); font-weight: 600;
+       text-transform: uppercase; letter-spacing: .04em; }
+  .banner { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+            padding: 14px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .banner .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--line); }
+  .banner .dot.on { background: var(--ok); box-shadow: 0 0 0 4px rgba(21,128,61,.15); }
+  .banner .dot.present { background: var(--warn); }
+  .banner .label { color: var(--muted); font-size: 13px; }
+  .banner > div { min-width: 0; }
+  .banner #stopBtn { margin-left: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line);
+           vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+  tr:last-child td { border-bottom: 0; }
+  .uid { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px;
+           font-weight: 600; }
+  .badge.ok { background: #dcfce7; color: var(--ok); }
+  .badge.none { background: #fef3c7; color: var(--warn); }
+  .muted { color: var(--muted); font-size: 13px; }
+  input[type=text] { font: inherit; padding: 5px 8px; border: 1px solid var(--line);
+                     border-radius: 6px; width: 100%; max-width: 180px; background: transparent; }
+  input[type=text]:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
+           border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { filter: brightness(.92); color: #fff; }
+  button.danger:hover { border-color: var(--danger); color: var(--danger); }
+  button:disabled { opacity: .5; cursor: default; }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  audio { width: 200px; height: 32px; margin-top: 6px; display: block; }
+  .empty { padding: 24px; text-align: center; color: var(--muted); }
+  ul.events { list-style: none; margin: 0; padding: 0; background: var(--card);
+              border: 1px solid var(--line); border-radius: 10px; }
+  ul.events li { padding: 8px 12px; border-bottom: 1px solid var(--line); display: flex;
+                 gap: 12px; align-items: baseline; }
+  ul.events li:last-child { border-bottom: 0; }
+  ul.events .ts { color: var(--muted); font-size: 12px; white-space: nowrap; min-width: 130px; }
+  ul.events .type { font-weight: 600; min-width: 70px; }
+  ul.events .type.no_file, ul.events .type.no_speaker { color: var(--warn); }
+  ul.events .type.played { color: var(--ok); }
+  .dev { border: 1px dashed var(--accent); border-radius: 10px; padding: 12px 16px;
+         margin-top: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .dev .tag { color: var(--accent); font-weight: 600; font-size: 13px; }
+  .dev input[type=text] { max-width: 160px; }
+  .dev input.hold { max-width: 60px; }
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+           background: var(--text); color: #fff; padding: 10px 16px; border-radius: 8px;
+           font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+  .table-wrap { overflow-x: auto; }
+  @media (max-width: 640px) {
+    thead { display: none; }
+    table, tbody, tr, td { display: block; }
+    tr { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    tr:last-child { border-bottom: 0; }
+    td { border: 0; padding: 3px 0; }
+    td.hide { display: inline-block; margin-right: 12px; }
+    td[data-label]::before { content: attr(data-label) " "; color: var(--muted); font-size: 12px;
+                             text-transform: uppercase; }
+    td.uid { font-size: 15px; font-weight: 600; }
+    input[type=text] { max-width: 100%; }
+    audio { width: 100%; }
+    ul.events li { flex-wrap: wrap; gap: 4px 12px; }
+    ul.events .ts { min-width: 0; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Music Box</h1>
+
+  <div class="banner" id="banner">
+    <span class="dot" id="dot"></span>
+    <div>
+      <div class="label">Now playing</div>
+      <div id="now">Idle</div>
+    </div>
+    <div>
+      <div class="label">Card on reader</div>
+      <div id="present" class="uid">None</div>
+    </div>
+    <button id="stopBtn">Stop</button>
+  </div>
+
+  <div class="dev" id="dev" hidden>
+    <span class="tag">DEV</span>
+    <input type="text" id="devUid" placeholder="Card id, e.g. 1,2,3,4,5">
+    <input type="text" id="devHold" class="hold" value="4" title="Seconds to hold">
+    <button id="devTap" class="primary">Simulate tap</button>
+    <button id="devRelease">Release</button>
+  </div>
+
+  <h2>Cards</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr>
+      <th>Card</th><th>Name</th><th>File</th><th class="hide">Taps</th>
+      <th class="hide">Last seen</th><th>Actions</th>
+    </tr></thead>
+    <tbody id="cards"></tbody>
+  </table>
+  </div>
+  <div class="empty" id="cardsEmpty" hidden>No cards yet. Tap a card on the reader and it will show up here.</div>
+
+  <h2>Recent taps</h2>
+  <ul class="events" id="events"></ul>
+  <div class="empty" id="eventsEmpty" hidden>Nothing logged yet.</div>
+</main>
+<div id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
